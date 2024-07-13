@@ -20,7 +20,7 @@
     root: Route['root'],
     fallback: Route['fallback'],
     path: Route['path'],
-    contextRoute: Route | null
+    contextRoute: Route | null,
   ) => Route
 
   const getRoute: GetRoute = (id, root, fallback, path, contextRoute) => {
@@ -80,7 +80,7 @@
       globalPath: string,
       root: Route['root'],
       path: Route['path'],
-      depth: Route['depth']
+      depth: Route['depth'],
     ) => boolean
 
     const isPathActive: IsPathActive = (globalPath, root, path, depth) => {
@@ -99,7 +99,7 @@
     type IsFallbackActive = (
       globalPath: string,
       depth: Route['depth'],
-      contextChildren: Route[]
+      contextChildren: Route[],
     ) => boolean
 
     const isFallbackActive: IsFallbackActive = (globalPath, depth, contextChildren) => {
@@ -113,7 +113,7 @@
           globalPath,
           contextChildren[i]?.root ?? false,
           contextChildren[i]?.path ?? '',
-          contextChildren[i]?.depth ?? 0
+          contextChildren[i]?.depth ?? 0,
         )
       }
 
@@ -135,7 +135,9 @@
 
 <script lang="ts">
   import { onDestroy, getContext, setContext, hasContext } from 'svelte'
-  import { pathWithoutBase } from '../location'
+  import { path as globalPath } from '../location'
+  import { options } from '../options'
+  import { getPathWithoutBase } from '../utils/getPathWithoutBase'
 
   const id: Route['id'] = getId()
   const root: Route['root'] = !hasContext(routeContextKey)
@@ -156,6 +158,6 @@
   setContext(childRoutesContextKey, childRoutes)
 </script>
 
-{#if isRouteActive($pathWithoutBase, $route, $contextChildRoutes)}
+{#if isRouteActive(getPathWithoutBase($globalPath, $options.basePath), $route, $contextChildRoutes)}
   <slot />
 {/if}

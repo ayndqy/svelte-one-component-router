@@ -1,6 +1,5 @@
 import { readable, derived } from 'svelte/store'
 import { options } from './options'
-import { getPathWithoutBase } from './utils/getPathWithoutBase'
 
 export type Path = string
 export type Query = string
@@ -64,7 +63,3 @@ export type HashStore = import('svelte/store').Readable<Hash>
 export const path: PathStore = derived(selectedLocation, ($location) => $location.path)
 export const query: QueryStore = derived(selectedLocation, ($location) => $location.query)
 export const hash: HashStore = derived(selectedLocation, ($location) => $location.hash)
-
-export const pathWithoutBase: PathStore = derived([options, path], ([$options, $path]) =>
-  getPathWithoutBase($path, $options.basePath)
-)

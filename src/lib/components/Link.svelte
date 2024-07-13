@@ -6,7 +6,7 @@
   type GetFormatedHref = (
     mode: Options['mode'],
     basePath: Options['basePath'],
-    href: string
+    href: string,
   ) => string
 
   const getFormatedHref: GetFormatedHref = (mode, basePath, href) => {
