@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store'
+import { writable, type Readable } from 'svelte/store'
 
 export type Options = {
   mode: 'window' | 'hash'
@@ -6,7 +6,7 @@ export type Options = {
 }
 
 export type OptionsStore = {
-  subscribe: import('svelte/store').Readable<Options>['subscribe']
+  subscribe: Readable<Options>['subscribe']
   set: (changedOptions: Partial<Options>) => void
 }
 

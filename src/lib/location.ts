@@ -1,4 +1,4 @@
-import { readable, derived } from 'svelte/store'
+import { readable, derived, type Readable } from 'svelte/store'
 import { options } from './options'
 
 export type Path = string
@@ -11,9 +11,7 @@ type Location = {
   hash: Hash
 }
 
-type ParseLocation = (fragment: string) => Location
-
-const parseLocation: ParseLocation = (fragment) => {
+const parseLocation = (fragment: string): Location => {
   const pathMatch = fragment.match(/^(\/[^?#]*)?/)
   const queryMatch = fragment.match(/\?([^#]*)?/)
   const hashMatch = fragment.match(/#(.*)?/)
@@ -48,7 +46,7 @@ const hashLocation = readable<Location>(getHashLocation(), (set) => {
   return () => window.removeEventListener('hashchange', handler)
 })
 
-const selectedLocation: import('svelte/store').Readable<Location> = derived(
+const selectedLocation: Readable<Location> = derived(
   [options, windowLocation, hashLocation],
   ([$options, $windowLocation, $hashLocation], set) => {
     if ($options.mode === 'window') set($windowLocation)
@@ -56,9 +54,9 @@ const selectedLocation: import('svelte/store').Readable<Location> = derived(
   }
 )
 
-export type PathStore = import('svelte/store').Readable<Path>
-export type QueryStore = import('svelte/store').Readable<Query>
-export type HashStore = import('svelte/store').Readable<Hash>
+export type PathStore = Readable<Path>
+export type QueryStore = Readable<Query>
+export type HashStore = Readable<Hash>
 
 export const path: PathStore = derived(selectedLocation, ($location) => $location.path)
 export const query: QueryStore = derived(selectedLocation, ($location) => $location.query)

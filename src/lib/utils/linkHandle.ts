@@ -1,8 +1,7 @@
+import { type Action } from 'svelte/action'
 import { router } from '../router'
 
-export type LinkClickHandler = (event: MouseEvent) => void
-
-export const linkClickHandler: LinkClickHandler = (event) => {
+export const linkClickHandler = (event: MouseEvent): boolean | void => {
   const target = (event.target as HTMLElement)?.closest('a[href]') as HTMLAnchorElement
   const href = target?.href
 
@@ -19,7 +18,7 @@ export const linkClickHandler: LinkClickHandler = (event) => {
   event.preventDefault()
 }
 
-export type LinkHandle = import('svelte/action').Action<HTMLElement>
+export type LinkHandle = Action<HTMLElement>
 
 export const linkHandle: LinkHandle = (node) => {
   node.addEventListener('click', linkClickHandler)

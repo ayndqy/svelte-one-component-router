@@ -1,9 +1,7 @@
 import { get } from 'svelte/store'
 import { options, type Options } from './options'
 
-type DispatchLocationChange = (mode?: Options['mode']) => void
-
-const dispatchLocationChange: DispatchLocationChange = (mode = get(options).mode) => {
+const dispatchLocationChange = (mode: Options['mode'] = get(options).mode): void => {
   let type: string = 'popstate'
 
   if (mode === 'window') type = 'popstate'

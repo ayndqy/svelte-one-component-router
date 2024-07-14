@@ -1,7 +1,7 @@
 <svelte:options immutable={true} />
 
 <script lang="ts" context="module">
-  import { writable } from 'svelte/store'
+  import { writable, type Writable, type Readable } from 'svelte/store'
   import { createIdIssuer } from '../utils/createIdIssuer'
   import { getPathSegments } from '../utils/getPathSegments'
 
@@ -13,17 +13,15 @@
     depth: number
   }
 
-  type RouteStore = import('svelte/store').Writable<Route>
+  type RouteStore = Writable<Route>
 
-  type GetRoute = (
+  const getRoute = (
     id: Route['id'],
     root: Route['root'],
     fallback: Route['fallback'],
     path: Route['path'],
     contextRoute: Route | null,
-  ) => Route
-
-  const getRoute: GetRoute = (id, root, fallback, path, contextRoute) => {
+  ): Route => {
     const getRouteDepth = (fallback: boolean, path: string, contextDepth?: number) => {
       const pathLength = getPathSegments(path).filter((path) => path !== '/').length
       return (contextDepth ?? 0) + (fallback ? 1 : pathLength)
@@ -54,7 +52,7 @@
   }
 
   type ChildRoutesStore = {
-    subscribe: import('svelte/store').Readable<Route[]>['subscribe']
+    subscribe: Readable<Route[]>['subscribe']
     update: (route: Route) => void
     remove: (route: Route) => void
   }
@@ -65,66 +63,61 @@
     return {
       subscribe,
 
-      update: (route) =>
-        update((childRoutes) => [...childRoutes.filter((child) => route.id !== child.id), route]),
+      update: (route) => {
+        update((childRoutes) => [...childRoutes.filter((child) => route.id !== child.id), route])
+      },
 
-      remove: (route) =>
-        update((childRoutes) => childRoutes.filter((child) => route.id !== child.id)),
+      remove: (route) => {
+        update((childRoutes) => childRoutes.filter((child) => route.id !== child.id))
+      },
     }
   }
 
-  type IsRouteActive = (globalPath: string, route: Route, contextChildren: Route[]) => boolean
+  const isPathActive = (
+    globalPath: string,
+    root: Route['root'],
+    path: Route['path'],
+    depth: Route['depth'],
+  ): boolean => {
+    let globalPathSegments = getPathSegments(globalPath).filter((path) => path !== '/')
+    let pathSegments = getPathSegments(path).filter((path) => path !== '/')
+    let pathScope = ''
 
-  const isRouteActive: IsRouteActive = (globalPath, route, contextChildren) => {
-    type IsPathActive = (
-      globalPath: string,
-      root: Route['root'],
-      path: Route['path'],
-      depth: Route['depth'],
-    ) => boolean
+    if (path === '/') return root || globalPathSegments.length === depth
 
-    const isPathActive: IsPathActive = (globalPath, root, path, depth) => {
-      let globalPathSegments = getPathSegments(globalPath).filter((path) => path !== '/')
-      let pathSegments = getPathSegments(path).filter((path) => path !== '/')
-      let pathScope = ''
-
-      if (path === '/') return root || globalPathSegments.length === depth
-
-      for (let i = depth - pathSegments.length; i < depth; i++)
-        pathScope = pathScope + globalPathSegments[i]
-
-      return path === pathScope
+    for (let i = depth - pathSegments.length; i < depth; i++) {
+      pathScope = pathScope + globalPathSegments[i]
     }
 
-    type IsFallbackActive = (
-      globalPath: string,
-      depth: Route['depth'],
-      contextChildren: Route[],
-    ) => boolean
+    return path === pathScope
+  }
 
-    const isFallbackActive: IsFallbackActive = (globalPath, depth, contextChildren) => {
-      let globalPathSegments = getPathSegments(globalPath).filter((path) => path !== '/')
-      let hasActiveSiblingRoutes = false
+  const isFallbackActive = (
+    globalPath: string,
+    depth: Route['depth'],
+    contextChildren: Route[],
+  ): boolean => {
+    let globalPathSegments = getPathSegments(globalPath).filter((path) => path !== '/')
+    let hasActiveSiblingRoutes = false
 
-      for (let i = 0; i < contextChildren?.length && !hasActiveSiblingRoutes; i++) {
-        if (contextChildren[i]?.fallback) continue
+    for (let i = 0; i < contextChildren?.length && !hasActiveSiblingRoutes; i++) {
+      if (contextChildren[i]?.fallback) continue
 
-        hasActiveSiblingRoutes = isPathActive(
-          globalPath,
-          contextChildren[i]?.root ?? false,
-          contextChildren[i]?.path ?? '',
-          contextChildren[i]?.depth ?? 0,
-        )
-      }
-
-      return globalPathSegments.length >= depth && !hasActiveSiblingRoutes
+      hasActiveSiblingRoutes = isPathActive(
+        globalPath,
+        contextChildren[i]?.root ?? false,
+        contextChildren[i]?.path ?? '',
+        contextChildren[i]?.depth ?? 0,
+      )
     }
 
-    const { root, fallback, path, depth } = route
+    return globalPathSegments.length >= depth && !hasActiveSiblingRoutes
+  }
 
-    return fallback
-      ? isFallbackActive(globalPath, depth, contextChildren)
-      : isPathActive(globalPath, root, path, depth)
+  const isRouteActive = (globalPath: string, route: Route, contextChildren: Route[]): boolean => {
+    return route.fallback
+      ? isFallbackActive(globalPath, route.depth, contextChildren)
+      : isPathActive(globalPath, route.root, route.path, route.depth)
   }
 
   const getId = createIdIssuer()
