@@ -3,11 +3,7 @@
 <script lang="ts" context="module">
   import { type Options } from '../options'
 
-  const getFormatedHref = (
-    mode: Options['mode'],
-    basePath: Options['basePath'],
-    href: string,
-  ): string => {
+  const getFormatedHref = (mode: Options['mode'], basePath: Options['basePath'], href: string): string => {
     const prefix = mode === 'hash' ? '#' : ''
     return prefix + (basePath ?? '') + href
   }

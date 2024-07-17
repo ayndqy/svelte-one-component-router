@@ -2,7 +2,6 @@
 .svelte-kit
 node_modules
 src
-
 .prettierrc
 package-lock.json
 svelte.config.js
