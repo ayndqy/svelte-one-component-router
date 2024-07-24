@@ -1,4 +1,4 @@
-import { type Action } from 'svelte/action'
+import type { Action } from 'svelte/action'
 import { router } from '../router'
 
 export const linkClickHandler = (event: MouseEvent): boolean | void => {

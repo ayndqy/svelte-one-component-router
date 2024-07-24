@@ -2,6 +2,7 @@
 
 <script lang="ts" context="module">
   import { writable, type Writable, type Readable } from 'svelte/store'
+  import type { Path } from '../location'
   import { getPathSegments } from '../utils/getPathSegments'
   import { createIdIssuer } from '../utils/createIdIssuer'
 
@@ -51,69 +52,48 @@
     return route
   }
 
-  type NestedRoutesStore = {
+  type RoutesStore = {
     subscribe: Readable<Route[]>['subscribe']
     update: (route: Route) => void
     remove: (route: Route) => void
   }
 
-  const createNestedRoutes = (): NestedRoutesStore => {
+  const createRoutes = (): RoutesStore => {
     const { subscribe, update } = writable<Route[]>([])
 
     return {
       subscribe,
 
       update: (route) => {
-        update((routes) => [...routes.filter((nestedRoute) => route.id !== nestedRoute.id), route])
+        update((routes) => [...routes.filter(({ id }) => id !== route.id), route])
       },
 
       remove: (route) => {
-        update((routes) => routes.filter((nestedRoute) => route.id !== nestedRoute.id))
+        update((routes) => routes.filter(({ id }) => id !== route.id))
       },
     }
   }
 
-  const isRouteActive = (globalPath: string, route: Route, contextChildren: Route[]): boolean => {
-    const isPathActive = (globalPath: string, root: Route['root'], path: Route['path'], depth: Route['depth']): boolean => {
-      let globalPathSegments = getPathSegments(globalPath).filter((path) => path !== '/')
-      let pathSegments = getPathSegments(path).filter((path) => path !== '/')
-      let pathScope = ''
-
+  const isRouteActive = (globalPath: Path, route: Route, contextNestedRoutes: Route[]): boolean => {
+    const isPathActive = (globalPath: Path, root: Route['root'], path: Route['path'], depth: Route['depth']): boolean => {
+      const globalPathSegments = getPathSegments(globalPath).filter((path) => path !== '/')
       if (path === '/') return root || globalPathSegments.length === depth
-
-      for (let i = depth - pathSegments.length; i < depth; i++) {
-        pathScope = pathScope + globalPathSegments[i]
-      }
-
-      return path === pathScope
+      const pathSegments = getPathSegments(path).filter((path) => path !== '/')
+      return pathSegments.every((segment, i) => segment === globalPathSegments[depth - pathSegments.length + i])
     }
 
-    const isFallbackActive = (globalPath: string, depth: Route['depth'], contextChildren: Route[]): boolean => {
-      let globalPathSegments = getPathSegments(globalPath).filter((path) => path !== '/')
-      let hasActiveSiblingRoutes = false
-
-      for (let i = 0; i < contextChildren?.length && !hasActiveSiblingRoutes; i++) {
-        if (contextChildren[i]?.fallback) continue
-
-        hasActiveSiblingRoutes = isPathActive(
-          globalPath,
-          contextChildren[i]?.root ?? false,
-          contextChildren[i]?.path ?? '',
-          contextChildren[i]?.depth ?? 0,
-        )
-      }
-
-      return globalPathSegments.length >= depth && !hasActiveSiblingRoutes
+    const isFallbackActive = (globalPath: Path, depth: Route['depth'], siblingRoutes: Route[]): boolean => {
+      const globalPathSegments = getPathSegments(globalPath).filter((path) => path !== '/')
+      if (depth > globalPathSegments.length) return false
+      return siblingRoutes.every(({ root, fallback, path, depth }) => fallback || !isPathActive(globalPath, root, path, depth))
     }
 
     return route.fallback
-      ? isFallbackActive(globalPath, route.depth, contextChildren)
+      ? isFallbackActive(globalPath, route.depth, contextNestedRoutes)
       : isPathActive(globalPath, route.root, route.path, route.depth)
   }
 
   const getId = createIdIssuer()
-  const routeContextKey = {}
-  const nestedRoutesContextKey = {}
 </script>
 
 <script lang="ts">
@@ -123,22 +103,21 @@
   import { getPathWithoutBase } from '../utils/getPathWithoutBase'
 
   const id: Route['id'] = getId()
-  const root: Route['root'] = !hasContext(routeContextKey)
+  const root: Route['root'] = !hasContext('_route')
   export let fallback: Route['fallback'] = false
   export let path: Route['path'] = '/'
 
   const route: RouteStore = writable()
-  const contextRoute: RouteStore = getContext(routeContextKey)
-  const nestedRoutes: NestedRoutesStore = createNestedRoutes()
-  const contextNestedRoutes: NestedRoutesStore = getContext(nestedRoutesContextKey)
+  const nestedRoutes: RoutesStore = createRoutes()
+  const contextRoute: RouteStore = getContext('_route')
+  const contextNestedRoutes: RoutesStore = getContext('_nestedRoutes')
 
   $: $route = getRoute(id, root, fallback, path, $contextRoute)
-
   $: contextNestedRoutes?.update($route)
   onDestroy(() => contextNestedRoutes?.remove($route))
 
-  setContext(routeContextKey, route)
-  setContext(nestedRoutesContextKey, nestedRoutes)
+  setContext('_route', route)
+  setContext('_nestedRoutes', nestedRoutes)
 </script>
 
 {#if isRouteActive(getPathWithoutBase($globalPath, $options.basePath), $route, $contextNestedRoutes)}
